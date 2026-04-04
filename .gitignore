@@ -1,0 +1,20 @@
+# Ignore data folders
+data/
+Concepts/
+output/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+#large files
+*.csv
+*.xlsx
+*.parquet
+*.pkl
+
+# NOTEBOOK / SYSTEM
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db

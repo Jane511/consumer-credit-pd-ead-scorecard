@@ -1,0 +1,38 @@
+HomeCredit_PD_Scorecard/
+│
+├── notebooks/
+│   ├── HomeCredit_00_Logistic_with_Applicationdata.ipynb
+│   ├── HomeCredit_01_External_Data_Preparation.ipynb
+│   ├── HomeCredit_02_Logistic_With_External_Features.ipynb
+│   ├── HomeCredit_03_PD_Scorecard_Build.ipynb
+│   ├── HomeCredit_04_PD_Scorecard_Validation_and_Business_Use.ipynb
+│   ├── HomeCredit_05_PD_Scorecard_Advanced_Monitoring_and_Stability.ipynb
+│   ├── HomeCredit_06_PD_Scorecard_Model_Risk_and_Portfolio_Governance.ipynb
+│   ├── HomeCredit_07_PD_Scorecard_Model_Documentation_Backtesting_Policy.ipynb
+│
+├── src/
+│   ├── woe.py
+│   ├── transform.py
+│   ├── psi.py
+│   ├── calibration.py
+│   ├── output.py
+│   ├── validation.py
+│   ├── monitoring.py
+│   ├── backtesting.py
+│
+├── output/
+│   ├── woe_table_all_features.csv
+│   ├── iv_summary.csv
+│   ├── selected_features.csv
+│   ├── scorecard_points_table.csv
+│   ├── score_band_summary.csv
+│   ├── validation_metrics.csv
+│   ├── decile_table.csv
+│   ├── ks_table.csv
+│   ├── calibration_table.csv
+│   ├── psi_by_score_band.csv
+│   ├── score_to_grade_mapping.csv
+│   ├── backtesting_default_rate_by_month.csv
+│   ├── policy_cutoff_table.csv
+│
+├── README.md
