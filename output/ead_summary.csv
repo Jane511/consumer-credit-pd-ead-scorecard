@@ -1,0 +1,12 @@
+metric,value
+defaulted_accounts_used,1495.0
+average_CCF,0.0093
+average_EAD,2936.99
+average_EAD_onset,2228.26
+CCF_low_util,0.0073
+CCF_medium_util,0.005
+CCF_high_util,0.0215
+PD_from_scorecard,0.0805
+LGD_assumed,0.7
+EAD_example,2936.99
+EL_example_PDxLGDxEAD,165.4

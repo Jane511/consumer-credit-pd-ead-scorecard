@@ -1,0 +1,5 @@
+metric,value
+baseline_auc,0.5335675353631975
+train_rows,176308.0
+test_rows,75561.0
+n_features,9.0

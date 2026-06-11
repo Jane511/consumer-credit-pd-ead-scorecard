@@ -1,20 +1,28 @@
-# Ignore data folders
+# Raw data — downloaded separately, not committed
 data/
-Concepts/
-output/
+
+# Jupyter
+.ipynb_checkpoints/
 
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
 .venv/
+venv/
+env/
 
-#large files
-*.csv
-*.xlsx
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Large intermediates (keep handoff outputs elsewhere)
 *.parquet
 *.pkl
 
-# NOTEBOOK / SYSTEM
-.ipynb_checkpoints/
-.DS_Store
-Thumbs.db
+# Large per-row scored dump — exceeds GitHub's 100MB limit; regenerate via notebook 03
+output/scorecard_outputs/05_train_scored.csv
+
+# Local working folders
+Concepts/

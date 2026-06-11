@@ -1,0 +1,7 @@
+metric,value
+train_auc,0.7061815140064589
+test_auc,0.7062519110717927
+base_score,600.0
+base_odds,0.08
+pdo,20.0
+n_features,12.0
