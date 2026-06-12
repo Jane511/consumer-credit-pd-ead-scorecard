@@ -19,6 +19,46 @@ This project shows how a bank-style **consumer credit** PD scorecard - extended 
 - EAD / CCF and a PD x LGD x EAD expected-loss view on the credit-card segment (methodology demonstration only - see the EAD data-quality note under Limitations)
 - validation, monitoring, governance, and policy framing
 
+## Results at a glance
+
+| Metric | Result | Plain meaning |
+|---|---|---|
+| Scorecard discrimination (AUC) | **0.71** | How well it separates defaulters from non-defaulters (0.5 = coin-flip, 1.0 = perfect) |
+| Gini / KS | **0.41 / 0.30** | Standard scorecard rank-ordering strengths — solid for an interpretable model |
+| Bad rate, best vs worst score band | **5.2% → 9.2%** | The score cleanly orders risk, so cut-offs and approve/decline rules work |
+| Calibration | predicted PD ≈ actual | Predicted default rates land on the observed rates across all PD buckets |
+
+## Key charts
+
+*All charts are regenerated from the committed scorecard outputs in [output/scorecard_outputs/](output/scorecard_outputs/)
+by [reports/make_figures.py](reports/make_figures.py) — aggregated results only, no raw borrower records.*
+
+### 1. The scorecard ranks risk (bad rate by score decile)
+![Default rate falling as the score rises across deciles](reports/figures/bad_rate_by_score_decile.png)
+
+**What this shows:** the actual default rate in each tenth of the book, ordered from lowest score (riskiest) to highest (safest).
+**Why it matters:** the bad rate falls steadily as the score rises — visual proof the scorecard separates good borrowers from bad, which is the whole job of an origination model.
+
+### 2. Calibration — predicted PD vs reality
+![Predicted PD versus observed default rate sitting on the perfect-calibration line](reports/figures/pd_calibration.png)
+
+**What this shows:** each dot is a group of borrowers; its position compares the PD the model predicted against the default rate that actually happened.
+**Why it matters:** the dots sit on the diagonal, so the PD numbers can be trusted as real probabilities — not just a ranking, but the right *level*.
+
+### 3. Top predictors by Information Value
+![Horizontal bar chart of the strongest predictors by Information Value](reports/figures/top_predictors_by_iv.png)
+
+**What this shows:** which variables carry the most predictive signal (Information Value is the standard scorecard measure of a variable's strength).
+**Why it matters:** the drivers are sensible and explainable — external bureau scores, credit history, employment, age — exactly what a reviewer expects to see.
+
+### 4. Score bands drive the lending decision
+![Default rate by score band A to E with approve, review and decline actions](reports/figures/score_band_policy.png)
+
+**What this shows:** the five score bands and their default rates, which map to approve / manual-review / decline actions.
+**Why it matters:** it turns the model into a usable policy — the chart a credit team would actually set cut-offs from.
+
+*Full methodology and code: see the notebooks in [notebooks/](notebooks/).*
+
 ## Business context
 
 Retail and consumer credit teams need an explainable Probability of Default model, and a view of how much is at risk if an account defaults, that can support:
