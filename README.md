@@ -118,6 +118,9 @@ The goal is a coherent, defensible underwriting workflow, not maximum benchmark 
 - scored test sample in `output/scorecard_outputs/06_test_scored.csv`
 - scorecard metadata in `output/scorecard_outputs/07_scorecard_metadata.csv`
 - EAD / CCF / Expected-Loss snapshot in `output/ead_summary.csv` (demonstration figures, not credible loss estimates - see Limitations)
+- PD calibration test (binomial + Hosmer-Lemeshow, traffic-light flags) in `output/scorecard_outputs/13_calibration_test.csv`
+- PD margin-of-conservatism overlay (pre/post-MoC grade PDs) in `output/scorecard_outputs/14_pd_moc_overlay.csv`
+- recession stress test (baseline vs mild/severe portfolio EL) in `output/scorecard_outputs/15_stress_test.csv`
 - recruiter-facing chart asset in `output/readme_assets/home_loan_score_band_default_rates.png`
 
 ![Score band default rates](output/readme_assets/home_loan_score_band_default_rates.png)
@@ -134,7 +137,8 @@ The goal is a coherent, defensible underwriting workflow, not maximum benchmark 
 | `HomeCredit_05_PD_Scorecard_Advanced_Monitoring_and_Stability.ipynb` | Monitoring and stability |
 | `HomeCredit_06_PD_Scorecard_Model_Risk_and_Portfolio_Governance.ipynb` | Model risk and governance |
 | `HomeCredit_07_PD_Scorecard_Model_Documentation_Backtesting_Policy.ipynb` | Documentation, backtesting, policy |
-| **`08_EAD_CCF.ipynb`** | **EAD (Exposure at Default), CCF (Credit Conversion Factor), and PD x LGD x EAD Expected Loss** - methodology demonstration; surfaces a data-quality finding that the 90+ DPD flag on this dataset is not a true economic default |
+| **`08_EAD_CCF.ipynb`** | **EAD, CCF, benchmarked LGD range, and account-level PD x LGD x EAD Expected Loss** - framework-aligned (onset anchor, receivables-inclusive EAD, no clipping/dropping, ULF/LF/BF basis, long-run/downturn/MoC/floor); still surfaces the data-quality finding that the 90+ DPD flag is not a true economic default |
+| **`09_Stress_Testing.ipynb`** | **Mild + severe recession stress test** on portfolio Expected Loss (PD/LGD/EAD multipliers, no-diversification convention, management-action and reverse-stress notes) |
 
 ## Repo structure
 
@@ -163,7 +167,8 @@ For the underlying theory and mathematics - WOE / IV, score scaling, the validat
 ## How to run
 
 1. Install dependencies with `pip install -r requirements.txt`.
-2. Open the notebooks in Jupyter and run them in numeric order.
+2. Open the notebooks in Jupyter and run them in numeric order (00-07 build/validate/govern the PD scorecard; `08` is EAD/CCF/LGD/EL; `09` is the stress test).
+3. Regenerate the PD calibration test and MoC overlay from the committed aggregates (no raw data needed) with `python reports/make_pd_calibration.py`.
 
 ## Limitations / Demo-only note
 
@@ -171,6 +176,38 @@ For the underlying theory and mathematics - WOE / IV, score scaling, the validat
 - It is a portfolio demonstration of consumer scorecard and expected-loss methods, not a live bank underwriting model.
 - Cut-offs, score bands, and governance thresholds are illustrative.
 - Reject inference, calibration, and monitoring are presented as structured portfolio notes rather than production controls.
-- No LGD model - the dataset has no recovery data, so LGD is assumed (0.70 for unsecured consumer credit).
-- PD is built on the application book; EAD is shown on the credit-card segment, so the two layers are illustrative rather than a single fully-linked account-level loss model.
+- No LGD model - the dataset has no recovery data, so LGD is an external-benchmark assumption, now carried as a **base/downturn range (0.75 / 0.85, within a ~0.65-0.90 unsecured-consumer band)** with the Expected Loss shown across the range, rather than a single 0.70 point.
+- PD is built on the application book and EAD on the credit-card segment; the Expected-Loss example now **links each card account to its own borrower PD** (via `SK_ID_CURR`), but the scorecard test split only covers part of the book (~25% link coverage), so it remains account-level-but-illustrative rather than a fully-linked portfolio loss model.
 - **EAD data-quality note - the EAD/CCF/Expected-Loss layer is a methodology demonstration, not a credible loss estimate on this data.** A sanity check found the credit-card `SK_DPD` (days-past-due) counter accumulates and never resets, so the 90+ DPD default flag does **not** represent economic default: the flag fires late on a tiny residual, the pre-default peak balance sits ~10 months earlier in a fully-current period, and some accounts even revive with large balances after their flagged "default". The exposure figures and the `EL = PD x LGD x EAD` example are kept only to show the mechanics. **Properly-anchored EAD - built on a clean, non-reviving default definition - is demonstrated in the companion Freddie Mac mortgage project.**
+
+### Framework alignment (APS 113 / APG 113 / Basel CRE36 / WP14)
+
+This project was aligned to the PD / EAD / LGD / EL / stress frameworks. The table separates what is
+**now implemented in code/outputs** from what is **documented-only** (a portfolio demo cannot operationalise
+everything, but each documented item names the rule it satisfies).
+
+**Now implemented (code + regenerated outputs):**
+
+- **5 bps PD floor** - `src/calibration.py: apply_pd_floor` (APS 113 Att B para 1).
+- **PD calibration test** - per-grade one-sided **binomial** + overall **Hosmer-Lemeshow** with traffic-light
+  flags -> `13_calibration_test.csv` (Part 5.3). On the calibrated PD every grade passes the binomial
+  under-estimation test; H-L flags that the calibrated level is conservative vs the benign test window.
+- **PD margin of conservatism** - additive +15% overlay on grade PDs -> `14_pd_moc_overlay.csv` (Step 10 / CRE36.67).
+- **EAD methodology fixes** (notebook 08): onset-of-delinquency primary anchor (EAD-3); receivables-inclusive,
+  floor-respecting EAD (EAD-2, Basel CRE36.89); **no clipping of observed CCF and no dropping of over-limit
+  accounts**, with a ULF/LF/BF basis switch in the high-utilisation region of instability (EAD-1,
+  CRE36.95(2)); long-run count-weighted CCF, downturn CCF, MoC and the allowed homogeneity exclusion (EAD-4).
+- **Benchmarked LGD range** and **account-level EL** across that range (LGD-1, EL-1).
+- **Recession stress test** - mild + severe scenarios on portfolio EL -> `15_stress_test.csv` (Basel CRE36.51 / APS 220).
+
+**Documented-only (correct treatment stated, not operationalised on demo data):**
+
+- Rating philosophy (PIT-leaning, long-run-calibrated; APG 113 para 73 caveat), retail-**pool** framing,
+  use test, development/validation independence, override policy, and reject inference - notebook 06.
+- Best-estimate-of-EL for defaulted accounts and EL-vs-provisions framing - notebook 08.
+- Management actions/contingency, reverse-stress framing, and independent validation of the stress framework - notebook 09.
+- The binomial / Hosmer-Lemeshow **independence caveat** (WP14): both tests understate Type-I error under
+  correlated defaults, so amber/red flags are review prompts, not hard pass/fail.
+
+The calibration test and MoC overlay regenerate with `python reports/make_pd_calibration.py`; notebooks 08
+and 09 regenerate their own CSVs when run.
