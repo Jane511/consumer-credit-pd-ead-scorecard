@@ -211,3 +211,7 @@ everything, but each documented item names the rule it satisfies).
 
 The calibration test and MoC overlay regenerate with `python reports/make_pd_calibration.py`; notebooks 08
 and 09 regenerate their own CSVs when run.
+
+## License
+
+Released under the MIT License — free to read, run, and reuse with attribution.
