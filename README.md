@@ -1,7 +1,3 @@
-<!-- Suggested repo name: consumer-credit-pd-ead-scorecard
-     (the current folder name still says "mortgage", but the data and models are consumer credit.
-     Rename the repository when convenient - this file no longer refers to mortgages.) -->
-
 # Consumer Credit PD + EAD + Expected Loss (Scorecard Project)
 
 This repository is a **consumer credit** PD (Probability of Default), EAD (Exposure at Default), and Expected Loss example in the broader credit-risk portfolio family. It uses the public Home Credit Default Risk dataset - an openly shareable consumer-lending dataset of borrower application, bureau, and repayment behaviour - and turns it into an interpretable origination scorecard plus an exposure-and-loss layer, with validation, monitoring, and documentation outputs.
