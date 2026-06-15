@@ -1,0 +1,4 @@
+scenario,pd_mult,lgd_mult,ead_mult,portfolio_EL,EL_uplift_vs_baseline
+Baseline,1.0,1.0,1.0,14118482.1213,0.0
+Mild recession,1.5,1.1,1.05,24460270.2752,0.7325
+Severe recession,2.5,1.25,1.1,48532282.2921,2.4375
