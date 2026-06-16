@@ -1,12 +1,12 @@
 """
-reports/make_pd_calibration.py — PD calibration test + margin-of-conservatism overlay.
+tools/make_pd_calibration.py — PD calibration test + margin-of-conservatism overlay.
 
 Builds two committed artefacts from the existing scorecard outputs (aggregated grade
 results only — never raw borrower records), so they regenerate reproducibly with:
 
-    python reports/make_pd_calibration.py
+    python tools/make_pd_calibration.py
 
-Outputs (into output/scorecard_outputs/):
+Outputs (into outputs/tables/scorecard_outputs/):
   13_calibration_test.csv  — per-grade binomial + Hosmer-Lemeshow calibration test
                              with a green/amber/red traffic-light flag (PD-2).
   14_pd_moc_overlay.csv    — per-grade master scale with the additive margin-of-
@@ -27,7 +27,7 @@ sys.path.insert(0, str(ROOT))
 from src.calibration import apply_pd_floor, PD_FLOOR
 from src.validation import binomial_pd_test, hosmer_lemeshow
 
-SC = ROOT / "output" / "scorecard_outputs"
+SC = ROOT / "outputs" / "tables" / "scorecard_outputs"
 N_GRADES = 8  # G1..G8, matching score_to_grade_mapping.csv (equal-frequency octiles)
 
 # --- Margin-of-conservatism sizing (PD-3) ------------------------------------------
@@ -44,7 +44,7 @@ def _grade_table():
     """Re-derive the per-grade PD table from the scored test set.
 
     Grades G1..G8 are equal-frequency octiles of `score` (G1 = lowest score = worst),
-    reproducing output/scorecard_outputs/score_to_grade_mapping.csv. Predicted PD is the
+    reproducing outputs/tables/scorecard_outputs/score_to_grade_mapping.csv. Predicted PD is the
     mean model PD in the grade (with the 5 bps floor applied, PD-1); observed is the
     realised default rate.
     """
@@ -122,7 +122,7 @@ def main():
     cal = build_calibration_test(df, g)
     cal.to_csv(SC / "13_calibration_test.csv", index=False)
     hl = cal.attrs["hl"]
-    print("Saved -> output/scorecard_outputs/13_calibration_test.csv")
+    print("Saved -> outputs/tables/scorecard_outputs/13_calibration_test.csv")
     print("  per-grade binomial flags:", dict(cal[cal.grade.str.startswith("G")]
                                                .set_index("grade")["flag"]))
     print("  Hosmer-Lemeshow chi2=%.2f dof=%d p=%.4f (independence caveat applies)"
@@ -130,7 +130,7 @@ def main():
 
     moc = build_moc_overlay(g)
     moc.to_csv(SC / "14_pd_moc_overlay.csv", index=False)
-    print("Saved -> output/scorecard_outputs/14_pd_moc_overlay.csv")
+    print("Saved -> outputs/tables/scorecard_outputs/14_pd_moc_overlay.csv")
     print("  PD floor = %.4f (5 bps); MoC = +%.0f%% relative, additive."
           % (PD_FLOOR, MOC_RELATIVE * 100))
 

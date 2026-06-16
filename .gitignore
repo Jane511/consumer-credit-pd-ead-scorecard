@@ -22,8 +22,8 @@ Thumbs.db
 *.pkl
 
 # Per-loan scored dumps — large, regenerable via notebook 03; keep only aggregate snapshots
-output/scorecard_outputs/05_train_scored.csv
-output/scorecard_outputs/06_test_scored.csv
+outputs/tables/scorecard_outputs/05_train_scored.csv
+outputs/tables/scorecard_outputs/06_test_scored.csv
 
 # Local working folders
 Concepts/

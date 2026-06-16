@@ -26,29 +26,29 @@ This project shows how a bank-style **consumer credit** PD scorecard - extended 
 
 ## Key charts
 
-*All charts are regenerated from the committed scorecard outputs in [output/scorecard_outputs/](output/scorecard_outputs/)
-by [reports/make_figures.py](reports/make_figures.py) — aggregated results only, no raw borrower records.*
+*All charts are regenerated from the committed scorecard outputs in [outputs/tables/scorecard_outputs/](outputs/tables/scorecard_outputs/)
+by [tools/make_figures.py](tools/make_figures.py) — aggregated results only, no raw borrower records.*
 
 ### 1. The scorecard ranks risk (bad rate by score decile)
-![Default rate falling as the score rises across deciles](reports/figures/bad_rate_by_score_decile.png)
+![Default rate falling as the score rises across deciles](outputs/charts/bad_rate_by_score_decile.png)
 
 **What this shows:** the actual default rate in each tenth of the book, ordered from lowest score (riskiest) to highest (safest).
 **Why it matters:** the bad rate falls steadily as the score rises — visual proof the scorecard separates good borrowers from bad, which is the whole job of an origination model.
 
 ### 2. Calibration — predicted PD vs reality
-![Predicted PD versus observed default rate sitting on the perfect-calibration line](reports/figures/pd_calibration.png)
+![Predicted PD versus observed default rate sitting on the perfect-calibration line](outputs/charts/pd_calibration.png)
 
 **What this shows:** each dot is a group of borrowers; its position compares the PD the model predicted against the default rate that actually happened.
 **Why it matters:** the dots sit on the diagonal, so the PD numbers can be trusted as real probabilities — not just a ranking, but the right *level*.
 
 ### 3. Top predictors by Information Value
-![Horizontal bar chart of the strongest predictors by Information Value](reports/figures/top_predictors_by_iv.png)
+![Horizontal bar chart of the strongest predictors by Information Value](outputs/charts/top_predictors_by_iv.png)
 
 **What this shows:** which variables carry the most predictive signal (Information Value is the standard scorecard measure of a variable's strength).
 **Why it matters:** the drivers are sensible and explainable — external bureau scores, credit history, employment, age — exactly what a reviewer expects to see.
 
 ### 4. Score bands drive the lending decision
-![Default rate by score band A to E with approve, review and decline actions](reports/figures/score_band_policy.png)
+![Default rate by score band A to E with approve, review and decline actions](outputs/charts/score_band_policy.png)
 
 **What this shows:** the five score bands and their default rates, which map to approve / manual-review / decline actions.
 **Why it matters:** it turns the model into a usable policy — the chart a credit team would actually set cut-offs from.
@@ -94,7 +94,7 @@ Modelling flow:
 6. Review discrimination, deciles, calibration, stability, and governance notes.
 7. Estimate EAD / CCF on defaulted credit-card accounts and combine PD x LGD x EAD into Expected Loss (demonstration only - a sanity check found the dataset's default flag is not a true economic default; see the EAD data-quality note under Limitations).
 
-The retained scorecard metadata in `output/scorecard_outputs/07_scorecard_metadata.csv` shows a 12-feature scorecard with train and test AUC of about `0.706`.
+The retained scorecard metadata in `outputs/tables/scorecard_outputs/07_scorecard_metadata.csv` shows a 12-feature scorecard with train and test AUC of about `0.706`.
 
 ## Why WOE / IV + logistic regression
 
@@ -109,17 +109,17 @@ The goal is a coherent, defensible underwriting workflow, not maximum benchmark 
 ## Key outputs
 
 - notebook workflow in `notebooks/`
-- IV summary in `output/scorecard_outputs/01_iv_summary.csv`
-- scorecard points table in `output/scorecard_outputs/04_scorecard_points.csv`
-- scored test sample in `output/scorecard_outputs/06_test_scored.csv`
-- scorecard metadata in `output/scorecard_outputs/07_scorecard_metadata.csv`
-- EAD / CCF / Expected-Loss snapshot in `output/ead_summary.csv` (demonstration figures, not credible loss estimates - see Limitations)
-- PD calibration test (binomial + Hosmer-Lemeshow, traffic-light flags) in `output/scorecard_outputs/13_calibration_test.csv`
-- PD margin-of-conservatism overlay (pre/post-MoC grade PDs) in `output/scorecard_outputs/14_pd_moc_overlay.csv`
-- recession stress test (baseline vs mild/severe portfolio EL) in `output/scorecard_outputs/15_stress_test.csv`
-- recruiter-facing chart asset in `output/readme_assets/home_loan_score_band_default_rates.png`
+- IV summary in `outputs/tables/scorecard_outputs/01_iv_summary.csv`
+- scorecard points table in `outputs/tables/scorecard_outputs/04_scorecard_points.csv`
+- scored test sample in `outputs/tables/scorecard_outputs/06_test_scored.csv`
+- scorecard metadata in `outputs/tables/scorecard_outputs/07_scorecard_metadata.csv`
+- EAD / CCF / Expected-Loss snapshot in `outputs/tables/ead_summary.csv` (demonstration figures, not credible loss estimates - see Limitations)
+- PD calibration test (binomial + Hosmer-Lemeshow, traffic-light flags) in `outputs/tables/scorecard_outputs/13_calibration_test.csv`
+- PD margin-of-conservatism overlay (pre/post-MoC grade PDs) in `outputs/tables/scorecard_outputs/14_pd_moc_overlay.csv`
+- recession stress test (baseline vs mild/severe portfolio EL) in `outputs/tables/scorecard_outputs/15_stress_test.csv`
+- recruiter-facing chart asset in `outputs/charts/home_loan_score_band_default_rates.png`
 
-![Score band default rates](output/readme_assets/home_loan_score_band_default_rates.png)
+![Score band default rates](outputs/charts/home_loan_score_band_default_rates.png)
 
 ## Notebook map
 
@@ -140,7 +140,7 @@ The goal is a coherent, defensible underwriting workflow, not maximum benchmark 
 
 - `data/`: public source data used by the notebooks
 - `notebooks/`: numbered build, validation, monitoring, governance, and EAD walkthroughs
-- `output/`: retained scorecard tables, README assets, and the EAD / Expected-Loss snapshot (`ead_summary.csv`)
+- `outputs/tables/`: retained scorecard tables, README assets, and the EAD / Expected-Loss snapshot (`ead_summary.csv`)
 - `src/`: reusable WOE, validation, calibration, PSI, and monitoring helpers
 - `Concepts/`: private background PDFs and legacy working material not used as the public review path
 
@@ -155,16 +155,16 @@ For the underlying theory and mathematics - WOE / IV, score scaling, the validat
 **Quick review option** - if you don't want to open every notebook:
 
 1. `README.md`
-2. `output/scorecard_outputs/07_scorecard_metadata.csv` (scorecard summary and AUC)
-3. `output/scorecard_outputs/04_scorecard_points.csv` (points table)
-4. `output/scorecard_outputs/06_test_scored.csv` (scored borrowers)
+2. `outputs/tables/scorecard_outputs/07_scorecard_metadata.csv` (scorecard summary and AUC)
+3. `outputs/tables/scorecard_outputs/04_scorecard_points.csv` (points table)
+4. `outputs/tables/scorecard_outputs/06_test_scored.csv` (scored borrowers)
 5. notebooks `03` (scorecard build) and `04` (validation and business use)
 
 ## How to run
 
 1. Install dependencies with `pip install -r requirements.txt`.
 2. Open the notebooks in Jupyter and run them in numeric order (00-07 build/validate/govern the PD scorecard; `08` is EAD/CCF/LGD/EL; `09` is the stress test).
-3. Regenerate the PD calibration test and MoC overlay from the committed aggregates (no raw data needed) with `python reports/make_pd_calibration.py`.
+3. Regenerate the PD calibration test and MoC overlay from the committed aggregates (no raw data needed) with `python tools/make_pd_calibration.py`.
 
 ## Limitations / Demo-only note
 
@@ -205,7 +205,7 @@ everything, but each documented item names the rule it satisfies).
 - The binomial / Hosmer-Lemeshow **independence caveat** (WP14): both tests understate Type-I error under
   correlated defaults, so amber/red flags are review prompts, not hard pass/fail.
 
-The calibration test and MoC overlay regenerate with `python reports/make_pd_calibration.py`; notebooks 08
+The calibration test and MoC overlay regenerate with `python tools/make_pd_calibration.py`; notebooks 08
 and 09 regenerate their own CSVs when run.
 
 ## License
