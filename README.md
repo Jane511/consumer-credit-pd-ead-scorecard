@@ -1,213 +1,177 @@
-# Consumer Credit PD + EAD + Expected Loss (Scorecard Project)
+# Consumer Credit — PD Scorecard + EAD + Expected Loss + Stress Testing
 
-This repository is a **consumer credit** PD (Probability of Default), EAD (Exposure at Default), and Expected Loss example in the broader credit-risk portfolio family. It uses the public Home Credit Default Risk dataset - an openly shareable consumer-lending dataset of borrower application, bureau, and repayment behaviour - and turns it into an interpretable origination scorecard plus an exposure-and-loss layer, with validation, monitoring, and documentation outputs.
+An interpretable consumer-credit risk model on the public **Home Credit Default Risk** dataset:
+a probability-of-default (**PD**) scorecard, a revolving exposure-at-default (**EAD / CCF**) layer,
+an Expected Loss (**EL = PD × LGD × EAD**) view, and a recession stress test. Methods are
+transparent (logistic regression, WOE/IV scorecard, credit-conversion factors) and every result is
+reproduced into [outputs/tables/](outputs/tables/). Portfolio demonstration, not a production model.
 
-The repo is designed as a public portfolio project rather than a production bank model. The workflow is explainable, notebook-led, and built to show how an interpretable scorecard and a simple expected-loss view can support lending discussion, policy cut-offs, and ongoing model review.
+Full methodology and the APS 113 / APG 113 / Basel / WP14 mapping is in
+[consumer_credit_alignment.md](consumer_credit_alignment.md); WOE/IV and score-scaling theory is in
+[Scorecard_README.md](Scorecard_README.md).
 
-## What this repo is
+## Methods used
 
-This project shows how a bank-style **consumer credit** PD scorecard - extended with EAD and Expected Loss - can be structured using transparent methods:
+| Component | Method |
+|---|---|
+| **PD** | Logistic regression on application + bureau/behavioural features → **WOE/IV points scorecard** → 8 retail pools (G1–G8); long-run calibration, +15% margin of conservatism, 5 bps floor; binomial + Hosmer-Lemeshow calibration test. |
+| **EAD** | **Revolving credit-conversion factor (CCF)** on the credit-card segment: ULF basis with an LF/BF switch in the high-utilisation region of instability; onset-of-delinquency anchor; receivables-inclusive, floored at drawn; long-run count-weighted + downturn + MoC. |
+| **LGD** | External-benchmark assumption (no recovery data): base 0.75 / downturn 0.85, within a ~0.65–0.90 unsecured band. |
+| **EL** | EL = PD × LGD × EAD, account-level on the card segment (PD linked per account via `SK_ID_CURR`). |
+| **Stress** | Scenario multipliers on PD / LGD / EAD (mild + severe), stacked with no diversification offset. |
+| **Validation** | AUC / Gini / KS, decile + score-band rank-ordering, calibration test, PSI stability, governance / backtesting. |
 
-- baseline logistic regression on application-level data
-- feature enrichment from bureau and prior behavioural tables
-- WOE / IV scorecard development for interpretability
-- score scaling, score bands, and borrower-level PD outputs
-- EAD / CCF and a PD x LGD x EAD expected-loss view on the credit-card segment (methodology demonstration only - see the EAD data-quality note under Limitations)
-- validation, monitoring, governance, and policy framing
+## Results (summary)
 
-## Results at a glance
+| Metric | Result |
+|---|---|
+| Scorecard discrimination | AUC **0.706** (train and test) · Gini **0.41** · KS **0.30** |
+| Rating pools | 8 pools, predicted PD **10.8% (G1) → 5.6% (G8)** |
+| Calibration | binomial under-estimation test green per pool; overall Hosmer-Lemeshow conservative (8.85% predicted vs 8.07% observed) |
+| EAD (card segment) | onset-anchored ~**$2,005/account**; long-run ULF CCF **−0.88** (cards pay down before default) |
+| Expected Loss | ~**$310 (base) / $351 (downturn)** per account; portfolio baseline EL **$14.1m** |
+| Stress | severe recession lifts portfolio EL to **$48.5m (+2.4×)**; mild to $24.5m (+0.7×) |
 
-| Metric | Result | Plain meaning |
-|---|---|---|
-| Scorecard discrimination (AUC) | **0.71** | How well it separates defaulters from non-defaulters (0.5 = coin-flip, 1.0 = perfect) |
-| Gini / KS | **0.41 / 0.30** | Standard scorecard rank-ordering strengths — solid for an interpretable model |
-| Bad rate, best vs worst score band | **5.2% → 9.2%** | The score cleanly orders risk, so cut-offs and approve/decline rules work |
-| Calibration | predicted PD ≈ actual | Predicted default rates land on the observed rates across all PD buckets |
+---
 
-## Key charts
+## 1. PD model
 
-*All charts are regenerated from the committed scorecard outputs in [outputs/tables/scorecard_outputs/](outputs/tables/scorecard_outputs/)
-by [tools/make_figures.py](tools/make_figures.py) — aggregated results only, no raw borrower records.*
+**Target.** The Home Credit `TARGET` flag (a competition proxy); the APS 220 reference is
+unlikely-to-pay or 90+DPD, treated here as broad-equivalence with the horizon documented.
 
-### 1. The scorecard ranks risk (bad rate by score decile)
-![Default rate falling as the score rises across deciles](outputs/charts/bad_rate_by_score_decile.png)
+**Method.**
 
-**What this shows:** the actual default rate in each tenth of the book, ordered from lowest score (riskiest) to highest (safest).
-**Why it matters:** the bad rate falls steadily as the score rises — visual proof the scorecard separates good borrowers from bad, which is the whole job of an origination model.
+- **Logistic regression** built in stages — baseline on application data (notebooks 00–02), then
+  enrichment from bureau and prior-behaviour tables aggregated to borrower level.
+- **WOE/IV scorecard** — variables screened by Information Value, transformed to weight of evidence,
+  refit as an interpretable logistic scorecard, scaled to points (base 600, base odds 0.08, PDO 20).
+  12 features retained.
+- **Retail pools** — scores banded into 8 pools **G1 (riskiest) → G8 (safest)**.
+- **Calibration** — long-run grade PDs, a **+15% additive margin of conservatism**, and the **5 bps
+  PD floor** (does not bind; PDs ~5%+).
 
-### 2. Calibration — predicted PD vs reality
-![Predicted PD versus observed default rate sitting on the perfect-calibration line](outputs/charts/pd_calibration.png)
+**Results.** AUC 0.706 / Gini 0.41 / KS 0.30; pools rank-order from 10.8% (G1) to 5.6% (G8). The
+calibration test ([13_calibration_test.csv](outputs/tables/scorecard_outputs/13_calibration_test.csv))
+passes the binomial test in every pool and is conservative on the overall Hosmer-Lemeshow; the MoC
+overlay ([14_pd_moc_overlay.csv](outputs/tables/scorecard_outputs/14_pd_moc_overlay.csv)) shows
+pre/post-MoC pool PDs (e.g. G1 10.8% → 12.4%). Validation, deciles, score bands and PSI are in
+notebooks 04–07.
 
-**What this shows:** each dot is a group of borrowers; its position compares the PD the model predicted against the default rate that actually happened.
-**Why it matters:** the dots sit on the diagonal, so the PD numbers can be trusted as real probabilities — not just a ranking, but the right *level*.
+## 2. EAD model (revolving — CCF)
 
-### 3. Top predictors by Information Value
-![Horizontal bar chart of the strongest predictors by Information Value](outputs/charts/top_predictors_by_iv.png)
+A credit card is **revolving**, so EAD converts the undrawn limit via a **credit-conversion factor**
+(unlike a term loan, which has no CCF).
 
-**What this shows:** which variables carry the most predictive signal (Information Value is the standard scorecard measure of a variable's strength).
-**Why it matters:** the drivers are sensible and explainable — external bureau scores, credit history, employment, age — exactly what a reviewer expects to see.
+**Method.** Onset-of-delinquency as the primary default anchor (the 90+DPD flag is kept only as a
+diagnostic — see Limitations); EAD = drawn balance + receivables/excesses, floored at the drawn
+balance (Basel CRE36.89); observed CCFs **not** clipped to [0,1] and over-limit accounts **not**
+dropped (both ineffective under CRE36.95(2)); a **ULF→LF/BF basis switch in the high-utilisation
+region of instability** (CRE36.95(1)); long-run count-weighted CCF, downturn CCF, MoC, and the
+allowed homogeneity exclusion (APG 113 para 129(b)).
 
-### 4. Score bands drive the lending decision
-![Default rate by score band A to E with approve, review and decline actions](outputs/charts/score_band_policy.png)
+**Results** ([ead_summary.csv](outputs/tables/ead_summary.csv)). 1,806 → 1,376 accounts after the
+homogeneity exclusion; EAD ~$2,005/account (onset) vs $2,964 (90+DPD); **long-run ULF CCF −0.88** —
+a real finding that card balances pay down before default, so the conversion factor is negative.
 
-**What this shows:** the five score bands and their default rates, which map to approve / manual-review / decline actions.
-**Why it matters:** it turns the model into a usable policy — the chart a credit team would actually set cut-offs from.
+## 3. LGD
 
-*Full methodology and code: see the notebooks in [notebooks/](notebooks/).*
+No recovery cash flows exist in the dataset, so LGD is an **external-benchmark assumption**: base
+**0.75** / downturn **0.85** within a ~0.65–0.90 published unsecured range, with EL shown across the
+range as a sensitivity. A recovery-based, modelled downturn LGD is built in the companion Freddie Mac
+mortgage project.
 
-## Business context
+## 4. Expected Loss
 
-Retail and consumer credit teams need an explainable Probability of Default model, and a view of how much is at risk if an account defaults, that can support:
+`EL = PD × LGD × EAD`, **account-level** on the card segment — each account linked to its own
+borrower PD via `SK_ID_CURR`. Mean EL ~$310 (base) / $351 (downturn) per account; the PD link covers
+~25% of the card book, so the example is account-level but illustrative. Best-estimate-of-EL for
+defaulted accounts and an EL-vs-provisions framing are documented in notebook 08.
 
-- origination cut-offs and manual review rules
-- borrower risk ranking and score bands
-- exposure-at-default and expected-loss estimation
-- validation and monitoring discussion
-- governance and redevelopment triggers
+## 5. Stress testing
 
-This repo frames those needs in a public, recruiter-friendly way. The emphasis is on structure and business usability, not on chasing maximum benchmark performance from a black-box model.
+Scenario **multipliers** on PD / LGD / EAD (notebook 09), recomputing portfolio EL, with shocks
+stacked and **no diversification offset** (APG 113 para 92)
+→ [15_stress_test.csv](outputs/tables/scorecard_outputs/15_stress_test.csv):
+
+| Scenario | PD × | LGD × | EAD × | Portfolio EL | Uplift |
+|---|---:|---:|---:|---:|---:|
+| baseline | 1.0 | 1.0 | 1.0 | $14.1m | — |
+| mild recession | 1.5 | 1.1 | 1.05 | $24.5m | +0.73× |
+| severe recession | 2.5 | 1.25 | 1.1 | $48.5m | +2.44× |
+
+Management-action / contingency and reverse-stress notes are included (APS 220 para 74). The simple
+multiplier method here contrasts with the statistical macro-credit satellite model in the Freddie Mac
+project's `stress_test/` module.
+
+---
+
+## Charts
+
+Regenerated from committed scorecard outputs by [tools/make_figures.py](tools/make_figures.py)
+(aggregated results only, no raw borrower records).
+
+| Chart | Content |
+|---|---|
+| [bad_rate_by_score_decile.png](outputs/charts/bad_rate_by_score_decile.png) | Observed default rate by score decile |
+| [pd_calibration.png](outputs/charts/pd_calibration.png) | Predicted PD vs observed default rate |
+| [top_predictors_by_iv.png](outputs/charts/top_predictors_by_iv.png) | Strongest predictors by Information Value |
+| [score_band_policy.png](outputs/charts/score_band_policy.png) | Default rate by score band A–E with approve / review / decline cut-offs |
 
 ## Data source
 
-This project uses the **Home Credit Default Risk** dataset, a public dataset released by Home Credit Group for a Kaggle competition (2018).
+**Home Credit Default Risk** (Kaggle, 2018) — public consumer-credit data (personal loans,
+point-of-sale finance, credit cards). Files: `application_train`, `bureau`, `bureau_balance`,
+`previous_application`, `POS_CASH_balance`, `credit_card_balance`, `installments_payments`. Used for
+demonstration only. Source: <https://www.kaggle.com/competitions/home-credit-default-risk>
 
-- Source: Kaggle - [home-credit-default-risk competition](https://www.kaggle.com/competitions/home-credit-default-risk)
-- Type: consumer credit (personal loans, point-of-sale finance, credit cards)
-- Files used: `application_train`, `bureau`, `bureau_balance`, `previous_application`, `POS_CASH_balance`, `credit_card_balance`, `installments_payments`
-- Note: used for portfolio demonstration only; not a real bank portfolio.
+## Notebooks
 
-## Dataset and modelling approach
-
-Primary data inputs:
-
-- `data/` Home Credit consumer application data
-- bureau history aggregates
-- previous application, POS cash, instalment, and credit-card behavioural tables
-
-Modelling flow:
-
-1. Build a benchmark logistic regression on application data.
-2. Aggregate linked external tables into customer-level features.
-3. Screen variables using IV and risk-shape review.
-4. Transform selected variables with WOE and refit an interpretable logistic scorecard.
-5. Convert model output into points, scores, score bands, and PD estimates.
-6. Review discrimination, deciles, calibration, stability, and governance notes.
-7. Estimate EAD / CCF on defaulted credit-card accounts and combine PD x LGD x EAD into Expected Loss (demonstration only - a sanity check found the dataset's default flag is not a true economic default; see the EAD data-quality note under Limitations).
-
-The retained scorecard metadata in `outputs/tables/scorecard_outputs/07_scorecard_metadata.csv` shows a 12-feature scorecard with train and test AUC of about `0.706`.
-
-## Why WOE / IV + logistic regression
-
-This project uses a traditional scorecard stack (WOE binning, IV screening, logistic regression) because it suits a transparent, reviewer-facing portfolio piece:
-
-- coefficients stay explainable, and each variable's risk direction can be checked through its bins
-- score contributions convert cleanly into business-friendly points and score bands
-- validation outputs (AUC, deciles, calibration, PSI, governance notes) are easy to interpret in an interview or review setting
-
-The goal is a coherent, defensible underwriting workflow, not maximum benchmark performance from a black-box model.
-
-## Key outputs
-
-- notebook workflow in `notebooks/`
-- IV summary in `outputs/tables/scorecard_outputs/01_iv_summary.csv`
-- scorecard points table in `outputs/tables/scorecard_outputs/04_scorecard_points.csv`
-- scored test sample in `outputs/tables/scorecard_outputs/06_test_scored.csv`
-- scorecard metadata in `outputs/tables/scorecard_outputs/07_scorecard_metadata.csv`
-- EAD / CCF / Expected-Loss snapshot in `outputs/tables/ead_summary.csv` (demonstration figures, not credible loss estimates - see Limitations)
-- PD calibration test (binomial + Hosmer-Lemeshow, traffic-light flags) in `outputs/tables/scorecard_outputs/13_calibration_test.csv`
-- PD margin-of-conservatism overlay (pre/post-MoC grade PDs) in `outputs/tables/scorecard_outputs/14_pd_moc_overlay.csv`
-- recession stress test (baseline vs mild/severe portfolio EL) in `outputs/tables/scorecard_outputs/15_stress_test.csv`
-- recruiter-facing chart asset in `outputs/charts/home_loan_score_band_default_rates.png`
-
-![Score band default rates](outputs/charts/home_loan_score_band_default_rates.png)
-
-## Notebook map
-
-| Notebook | What it covers |
+| Notebook | Content |
 |---|---|
-| `HomeCredit_00_Logistic_with_Applicationdata.ipynb` | Baseline logistic regression on application data |
-| `HomeCredit_01_External_Data_Preparation.ipynb` | Prepare and aggregate linked external tables |
-| `HomeCredit_02_Logistic_With_External_Features.ipynb` | Logistic model with external features |
-| `HomeCredit_03_PD_Scorecard_Build.ipynb` | WOE / IV scorecard build, points and PD |
-| `HomeCredit_04_PD_Scorecard_Validation_and_Business_Use.ipynb` | Validation and business use |
-| `HomeCredit_05_PD_Scorecard_Advanced_Monitoring_and_Stability.ipynb` | Monitoring and stability |
-| `HomeCredit_06_PD_Scorecard_Model_Risk_and_Portfolio_Governance.ipynb` | Model risk and governance |
-| `HomeCredit_07_PD_Scorecard_Model_Documentation_Backtesting_Policy.ipynb` | Documentation, backtesting, policy |
-| **`08_EAD_CCF.ipynb`** | **EAD, CCF, benchmarked LGD range, and account-level PD x LGD x EAD Expected Loss** - framework-aligned (onset anchor, receivables-inclusive EAD, no clipping/dropping, ULF/LF/BF basis, long-run/downturn/MoC/floor); still surfaces the data-quality finding that the 90+ DPD flag is not a true economic default |
-| **`09_Stress_Testing.ipynb`** | **Mild + severe recession stress test** on portfolio Expected Loss (PD/LGD/EAD multipliers, no-diversification convention, management-action and reverse-stress notes) |
-
-## Repo structure
-
-- `data/`: public source data used by the notebooks
-- `notebooks/`: numbered build, validation, monitoring, governance, and EAD walkthroughs
-- `outputs/tables/`: retained scorecard tables, README assets, and the EAD / Expected-Loss snapshot (`ead_summary.csv`)
-- `src/`: reusable WOE, validation, calibration, PSI, and monitoring helpers
-- `Concepts/`: private background PDFs and legacy working material not used as the public review path
-
-## Recommended review path
-
-1. Read this `README.md` for the public overview, methodology, and limitations.
-2. Review the notebooks from `HomeCredit_00_Logistic_with_Applicationdata.ipynb` through `HomeCredit_07_PD_Scorecard_Model_Documentation_Backtesting_Policy.ipynb` in numeric order.
-3. Finish with `08_EAD_CCF.ipynb` for the EAD / Expected-Loss layer and its data-quality finding.
-
-For the underlying theory and mathematics - WOE / IV, score scaling, the validation metrics, and the per-notebook implementation logic - see the companion deep-dive in [`Scorecard_README.md`](Scorecard_README.md).
-
-**Quick review option** - if you don't want to open every notebook:
-
-1. `README.md`
-2. `outputs/tables/scorecard_outputs/07_scorecard_metadata.csv` (scorecard summary and AUC)
-3. `outputs/tables/scorecard_outputs/04_scorecard_points.csv` (points table)
-4. `outputs/tables/scorecard_outputs/06_test_scored.csv` (scored borrowers)
-5. notebooks `03` (scorecard build) and `04` (validation and business use)
+| `HomeCredit_00_Logistic_with_Applicationdata` | Baseline logistic regression on application data |
+| `HomeCredit_01_External_Data_Preparation` | Aggregate linked external tables to borrower level |
+| `HomeCredit_02_Logistic_With_External_Features` | Logistic model with external features |
+| `HomeCredit_03_PD_Scorecard_Build` | WOE/IV scorecard build, points, PD |
+| `HomeCredit_04_PD_Scorecard_Validation_and_Business_Use` | Validation, deciles, score bands, policy |
+| `HomeCredit_05_PD_Scorecard_Advanced_Monitoring_and_Stability` | PSI monitoring and stability |
+| `HomeCredit_06_PD_Scorecard_Model_Risk_and_Portfolio_Governance` | Model risk, governance, rating philosophy |
+| `HomeCredit_07_PD_Scorecard_Model_Documentation_Backtesting_Policy` | Documentation, backtesting, policy |
+| `08_EAD_CCF` | EAD, revolving CCF, benchmarked LGD range, account-level EL |
+| `09_Stress_Testing` | Mild + severe recession stress test on portfolio EL |
 
 ## How to run
 
-1. Install dependencies with `pip install -r requirements.txt`.
-2. Open the notebooks in Jupyter and run them in numeric order (00-07 build/validate/govern the PD scorecard; `08` is EAD/CCF/LGD/EL; `09` is the stress test).
-3. Regenerate the PD calibration test and MoC overlay from the committed aggregates (no raw data needed) with `python tools/make_pd_calibration.py`.
+```bash
+pip install -r requirements.txt
+# run the notebooks in numeric order: 00–07 (PD scorecard), 08 (EAD/CCF/LGD/EL), 09 (stress)
+# regenerate the PD calibration test + MoC overlay from committed aggregates (no raw data):
+python tools/make_pd_calibration.py
+```
 
-## Limitations / Demo-only note
+## Repository layout
 
-- The repo uses the public Home Credit dataset rather than a real lender's portfolio.
-- It is a portfolio demonstration of consumer scorecard and expected-loss methods, not a live bank underwriting model.
-- Cut-offs, score bands, and governance thresholds are illustrative.
-- Reject inference, calibration, and monitoring are presented as structured portfolio notes rather than production controls.
-- No LGD model - the dataset has no recovery data, so LGD is an external-benchmark assumption, now carried as a **base/downturn range (0.75 / 0.85, within a ~0.65-0.90 unsecured-consumer band)** with the Expected Loss shown across the range, rather than a single 0.70 point.
-- PD is built on the application book and EAD on the credit-card segment; the Expected-Loss example now **links each card account to its own borrower PD** (via `SK_ID_CURR`), but the scorecard test split only covers part of the book (~25% link coverage), so it remains account-level-but-illustrative rather than a fully-linked portfolio loss model.
-- **EAD data-quality note - the EAD/CCF/Expected-Loss layer is a methodology demonstration, not a credible loss estimate on this data.** A sanity check found the credit-card `SK_DPD` (days-past-due) counter accumulates and never resets, so the 90+ DPD default flag does **not** represent economic default: the flag fires late on a tiny residual, the pre-default peak balance sits ~10 months earlier in a fully-current period, and some accounts even revive with large balances after their flagged "default". The exposure figures and the `EL = PD x LGD x EAD` example are kept only to show the mechanics. **Properly-anchored EAD - built on a clean, non-reviving default definition - is demonstrated in the companion Freddie Mac mortgage project.**
+```
+.
+├── data/                 # Home Credit source data (not redistributed)
+├── notebooks/            # 00–07 PD scorecard · 08 EAD/CCF/EL · 09 stress
+├── outputs/tables/       # committed scorecard + EAD/EL/stress results  ·  outputs/charts/ — PNGs
+├── src/                  # woe, transform, calibration, validation, psi, monitoring, backtesting
+├── tools/                # make_figures.py, make_pd_calibration.py
+├── consumer_credit_alignment.md   # methodology + regulatory alignment (technical companion)
+└── Scorecard_README.md   # WOE/IV + score-scaling theory
+```
 
-### Framework alignment (APS 113 / APG 113 / Basel CRE36 / WP14)
+## Limitations
 
-This project was aligned to the PD / EAD / LGD / EL / stress frameworks. The table separates what is
-**now implemented in code/outputs** from what is **documented-only** (a portfolio demo cannot operationalise
-everything, but each documented item names the rule it satisfies).
-
-**Now implemented (code + regenerated outputs):**
-
-- **5 bps PD floor** - `src/calibration.py: apply_pd_floor` (APS 113 Att B para 1).
-- **PD calibration test** - per-grade one-sided **binomial** + overall **Hosmer-Lemeshow** with traffic-light
-  flags -> `13_calibration_test.csv` (Part 5.3). On the calibrated PD every grade passes the binomial
-  under-estimation test; H-L flags that the calibrated level is conservative vs the benign test window.
-- **PD margin of conservatism** - additive +15% overlay on grade PDs -> `14_pd_moc_overlay.csv` (Step 10 / CRE36.67).
-- **EAD methodology fixes** (notebook 08): onset-of-delinquency primary anchor (EAD-3); receivables-inclusive,
-  floor-respecting EAD (EAD-2, Basel CRE36.89); **no clipping of observed CCF and no dropping of over-limit
-  accounts**, with a ULF/LF/BF basis switch in the high-utilisation region of instability (EAD-1,
-  CRE36.95(2)); long-run count-weighted CCF, downturn CCF, MoC and the allowed homogeneity exclusion (EAD-4).
-- **Benchmarked LGD range** and **account-level EL** across that range (LGD-1, EL-1).
-- **Recession stress test** - mild + severe scenarios on portfolio EL -> `15_stress_test.csv` (Basel CRE36.51 / APS 220).
-
-**Documented-only (correct treatment stated, not operationalised on demo data):**
-
-- Rating philosophy (PIT-leaning, long-run-calibrated; APG 113 para 73 caveat), retail-**pool** framing,
-  use test, development/validation independence, override policy, and reject inference - notebook 06.
-- Best-estimate-of-EL for defaulted accounts and EL-vs-provisions framing - notebook 08.
-- Management actions/contingency, reverse-stress framing, and independent validation of the stress framework - notebook 09.
-- The binomial / Hosmer-Lemeshow **independence caveat** (WP14): both tests understate Type-I error under
-  correlated defaults, so amber/red flags are review prompts, not hard pass/fail.
-
-The calibration test and MoC overlay regenerate with `python tools/make_pd_calibration.py`; notebooks 08
-and 09 regenerate their own CSVs when run.
+- Public Home Credit data, not a real lender's portfolio; cut-offs and overlays are illustrative.
+- **No LGD model** — LGD is an external-benchmark assumption (no recovery data in the dataset).
+- **EAD/EL is a methodology demonstration**, not a credible loss estimate: the credit-card `SK_DPD`
+  counter accumulates and never resets, so the 90+DPD flag is **not** economic default (it fires late
+  on a small residual; the pre-default peak balance sits ~10 months earlier; some accounts revive
+  after their flagged default). Exposure and EL figures show the mechanics only. Properly-anchored
+  EAD and a recovery-based LGD are demonstrated in the companion Freddie Mac mortgage project.
+- The EL example links ~25% of the card book to a borrower PD — account-level but illustrative.
 
 ## License
 
-Released under the MIT License — free to read, run, and reuse with attribution.
+MIT License.
