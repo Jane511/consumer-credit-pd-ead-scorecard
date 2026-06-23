@@ -17,20 +17,22 @@ Full methodology and the APS 113 / APG 113 / Basel / WP14 mapping is in
 | **PD** | Logistic regression on application + bureau/behavioural features → **WOE/IV points scorecard** → 8 retail pools (G1–G8); long-run calibration, +15% margin of conservatism, 5 bps floor; binomial + Hosmer-Lemeshow calibration test. |
 | **EAD** | **Revolving credit-conversion factor (CCF)** on the credit-card segment: ULF basis with an LF/BF switch in the high-utilisation region of instability; onset-of-delinquency anchor; receivables-inclusive, floored at drawn; long-run count-weighted + downturn + MoC. |
 | **LGD** | External-benchmark assumption (no recovery data): base 0.75 / downturn 0.85, within a ~0.65–0.90 unsecured band. |
-| **EL** | EL = PD × LGD × EAD, account-level on the card segment (PD linked per account via `SK_ID_CURR`). |
-| **Stress** | Scenario multipliers on PD / LGD / EAD (mild + severe), stacked with no diversification offset. |
-| **Validation** | AUC / Gini / KS, decile + score-band rank-ordering, calibration test, PSI stability, governance / backtesting. |
+| **EL** | EL = PD × LGD × EAD: account-level (PD per account via `SK_ID_CURR`), **EL-by-grade + portfolio** (reconciles to the master scale), and **IFRS 9 / AASB 9 three-stage ECL**. |
+| **Stress** | **A —** scenario multipliers on PD/LGD/EAD (mild + severe); **B —** statistical **macro-credit satellite** → stressed PD per grade + migration, triangulated. |
+| **Validation** | AUC / Gini / KS, decile + score-band rank-ordering, calibration test, **confusion matrix**, **out-of-sample / cold holdout**, PSI stability; **8-element framework (APG 113 para 140)**. |
 
 ## Results (summary)
 
 | Metric | Result |
 |---|---|
 | Scorecard discrimination | AUC **0.706** (train and test) · Gini **0.41** · KS **0.30** |
-| Rating pools | 8 pools, predicted PD **10.8% (G1) → 5.6% (G8)** |
+| Rating pools | 8 pools, predicted PD **10.8% (G1) → 6.6% (G8)** (observed 11.1% → 5.6%) |
 | Calibration | binomial under-estimation test green per pool; overall Hosmer-Lemeshow conservative (8.85% predicted vs 8.07% observed) |
 | EAD (card segment) | onset-anchored ~**$2,005/account**; long-run ULF CCF **−0.88** (cards pay down before default) |
-| Expected Loss | ~**$310 (base) / $351 (downturn)** per account; portfolio baseline EL **$14.1m** |
-| Stress | severe recession lifts portfolio EL to **$48.5m (+2.4×)**; mild to $24.5m (+0.7×) |
+| Expected Loss | ~**$310 (base) / $351 (downturn)** per account; portfolio baseline EL **$14.1m** (reconciles to the EL-by-grade total) |
+| IFRS 9 ECL | 3-stage: S1 77.5k / S2 7.3k / S3 7.4k accounts; reported ECL ≈ **$26.9m** |
+| Stress A (multipliers) | severe recession lifts portfolio EL to **$48.5m (+2.4×)**; mild to $24.5m (+0.7×) |
+| Stress B (satellite) | severe PD **×2.36** — triangulated vs observed industry peak ×3.09 and the nb09 multiplier ×2.50 |
 
 ---
 
@@ -46,16 +48,23 @@ unlikely-to-pay or 90+DPD, treated here as broad-equivalence with the horizon do
 - **WOE/IV scorecard** — variables screened by Information Value, transformed to weight of evidence,
   refit as an interpretable logistic scorecard, scaled to points (base 600, base odds 0.08, PDO 20).
   12 features retained.
-- **Retail pools** — scores banded into 8 pools **G1 (riskiest) → G8 (safest)**.
-- **Calibration** — long-run grade PDs, a **+15% additive margin of conservatism**, and the **5 bps
-  PD floor** (does not bind; PDs ~5%+).
+- **Master scale** — scores banded into 8 pools **G1 (riskiest) → G8 (safest)**
+  ([score_to_grade_mapping.csv](outputs/tables/scorecard_outputs/score_to_grade_mapping.csv)).
+- **Calibration → MoC → ratchet → floor** — long-run grade PDs, a **+15% additive margin of
+  conservatism**, a **revise-upward ratchet**, and the **5 bps PD floor**, combined in one table
+  ([18_grade_pd_moc_floor.csv](outputs/tables/scorecard_outputs/18_grade_pd_moc_floor.csv)); its
+  `pd_final` is the capital PD that feeds EL, so EL and the master scale reconcile.
 
-**Results.** AUC 0.706 / Gini 0.41 / KS 0.30; pools rank-order from 10.8% (G1) to 5.6% (G8). The
-calibration test ([13_calibration_test.csv](outputs/tables/scorecard_outputs/13_calibration_test.csv))
+**Results.** AUC 0.706 / Gini 0.41 / KS 0.30; pools rank-order from predicted 10.8% (G1) to 6.6% (G8).
+The calibration test ([13_calibration_test.csv](outputs/tables/scorecard_outputs/13_calibration_test.csv))
 passes the binomial test in every pool and is conservative on the overall Hosmer-Lemeshow; the MoC
 overlay ([14_pd_moc_overlay.csv](outputs/tables/scorecard_outputs/14_pd_moc_overlay.csv)) shows
-pre/post-MoC pool PDs (e.g. G1 10.8% → 12.4%). Validation, deciles, score bands and PSI are in
-notebooks 04–07.
+pre/post-MoC pool PDs (e.g. G1 10.8% → 12.4%). A **confusion matrix** at the prevalence cut-off
+([16_confusion_matrix.csv](outputs/tables/scorecard_outputs/16_confusion_matrix.csv); recall 0.68 /
+precision 0.14) and **out-of-sample + cold-holdout** validation
+([17_oot_validation.csv](outputs/tables/scorecard_outputs/17_oot_validation.csv); AUC ~0.71, PSI ≈ 0)
+are exported — a true *calendar* OOT is not feasible on this cross-sectional snapshot (see
+Limitations). Validation, deciles, score bands and PSI are in notebooks 04–07.
 
 ## 2. EAD model (revolving — CCF)
 
@@ -82,15 +91,25 @@ mortgage project.
 
 ## 4. Expected Loss
 
-`EL = PD × LGD × EAD`, **account-level** on the card segment — each account linked to its own
-borrower PD via `SK_ID_CURR`. Mean EL ~$310 (base) / $351 (downturn) per account; the PD link covers
-~25% of the card book, so the example is account-level but illustrative. Best-estimate-of-EL for
-defaulted accounts and an EL-vs-provisions framing are documented in notebook 08.
+`EL = PD × LGD × EAD`, delivered three ways:
+
+- **Account-level** on the card segment — each account linked to its own borrower PD via
+  `SK_ID_CURR`. Mean EL ~$310 (base) / $351 (downturn) per account; the PD link covers ~25% of the
+  card book, so the example is account-level but illustrative.
+- **By rating grade + portfolio total**
+  ([19_el_summary_by_grade.csv](outputs/tables/scorecard_outputs/19_el_summary_by_grade.csv)) — loans,
+  EAD, avg PD/LGD, total EL and EL-rate (bps) per grade, using the `pd_final` capital PD; the
+  portfolio total (**$14.1m**, ~763 bps) **reconciles exactly** to the stress-test baseline.
+- **IFRS 9 / AASB 9 three-stage ECL**
+  ([20_ifrs9_staging.csv](outputs/tables/scorecard_outputs/20_ifrs9_staging.csv)) — Stage 1 (12-month)
+  / Stage 2 (lifetime, SICR) / Stage 3 (best-estimate, impaired), reported ECL ≈ $26.9m. IFRS 9 LGD is
+  the unbiased best estimate (no downturn / MoC). Best-estimate-of-EL for defaulted accounts and an
+  EL-vs-provisions framing are documented in notebook 08.
 
 ## 5. Stress testing
 
-Scenario **multipliers** on PD / LGD / EAD (notebook 09), recomputing portfolio EL, with shocks
-stacked and **no diversification offset** (APG 113 para 92)
+**Approach A — observed multipliers** (notebook 09), recomputing portfolio EL with shocks stacked and
+**no diversification offset** (APG 113 para 92)
 → [15_stress_test.csv](outputs/tables/scorecard_outputs/15_stress_test.csv):
 
 | Scenario | PD × | LGD × | EAD × | Portfolio EL | Uplift |
@@ -99,9 +118,15 @@ stacked and **no diversification offset** (APG 113 para 92)
 | mild recession | 1.5 | 1.1 | 1.05 | $24.5m | +0.73× |
 | severe recession | 2.5 | 1.25 | 1.1 | $48.5m | +2.44× |
 
-Management-action / contingency and reverse-stress notes are included (APS 220 para 74). The simple
-multiplier method here contrasts with the statistical macro-credit satellite model in the Freddie Mac
-project's `stress_test/` module.
+**Approach B — statistical macro-credit satellite** ([stress_test/](stress_test/), see its
+[README](stress_test/README.md)). A logit-linear regression of the consumer-credit default rate on
+macro drivers (unemployment, wage growth, inflation, GDP) translates scenarios into a **stressed PD
+per grade** with **grade migration**, then **triangulates** the tail: satellite severe **×2.36** sits
+below the observed industry ceiling **×3.09** and beside the nb09 multiplier **×2.50**. All four macro
+coefficients are economically sign-consistent. Because the Home Credit snapshot has no calendar
+timeline, the satellite is fitted on real public industry history and its sensitivity applied to the
+portfolio's grades (documented). Management-action / contingency and reverse-stress notes are included
+(APS 220 para 74).
 
 ---
 
@@ -116,13 +141,25 @@ Regenerated from committed scorecard outputs by [tools/make_figures.py](tools/ma
 | [pd_calibration.png](outputs/charts/pd_calibration.png) | Predicted PD vs observed default rate |
 | [top_predictors_by_iv.png](outputs/charts/top_predictors_by_iv.png) | Strongest predictors by Information Value |
 | [score_band_policy.png](outputs/charts/score_band_policy.png) | Default rate by score band A–E with approve / review / decline cut-offs |
+| [el_by_grade.png](outputs/charts/el_by_grade.png) | Expected Loss ($m) and EL-rate (bps) by rating grade |
+| [stressed_pd_by_grade.png](stress_test/outputs/charts/stressed_pd_by_grade.png) | Satellite stress: baseline vs mild vs severe PD by grade |
 
-## Data source
+## Data source & coverage
 
 **Home Credit Default Risk** (Kaggle, 2018) — public consumer-credit data (personal loans,
-point-of-sale finance, credit cards). Files: `application_train`, `bureau`, `bureau_balance`,
-`previous_application`, `POS_CASH_balance`, `credit_card_balance`, `installments_payments`. Used for
-demonstration only. Source: <https://www.kaggle.com/competitions/home-credit-default-risk>
+point-of-sale finance, credit cards). **No new data was downloaded for this build** — the existing
+sample is used as-is; the project documents the coverage it has rather than expanding it.
+
+| | |
+|---|---|
+| Modelling base (PD) | `application_train` — **307,511** borrowers; **~8.07%** default rate (`TARGET`); 80/20 train/test |
+| Revolving segment (EAD) | `credit_card_balance` — **3.84m** monthly rows across **104,307** card accounts |
+| Key raw inputs | external scores (`EXT_SOURCE_2/3`), bureau history (`bureau`, `bureau_balance`), prior apps (`previous_application`), POS/installments (`POS_CASH_balance`, `installments_payments`) |
+| Time dimension | **cross-sectional snapshot** — `DAYS_*` are relative offsets, not calendar dates, so a true calendar OOT split is not feasible (documented in Limitations) |
+
+Files: `application_train`, `bureau`, `bureau_balance`, `previous_application`, `POS_CASH_balance`,
+`credit_card_balance`, `installments_payments`. Used for demonstration only.
+Source: <https://www.kaggle.com/competitions/home-credit-default-risk>
 
 ## Notebooks
 
@@ -144,8 +181,13 @@ demonstration only. Source: <https://www.kaggle.com/competitions/home-credit-def
 ```bash
 pip install -r requirements.txt
 # run the notebooks in numeric order: 00–07 (PD scorecard), 08 (EAD/CCF/LGD/EL), 09 (stress)
-# regenerate the PD calibration test + MoC overlay from committed aggregates (no raw data):
-python tools/make_pd_calibration.py
+# regenerate every committed aggregate table from the scored outputs (no raw data download):
+python tools/make_pd_calibration.py      # 13 calibration test + 14 MoC overlay
+python tools/make_pd_validation.py       # 16 confusion matrix + 17 OOT / cold holdout
+python tools/make_grade_pd_moc_floor.py  # 18 long-run PD -> MoC -> ratchet -> floor
+python tools/make_el_summary.py          # 19 EL-by-grade + 20 IFRS 9 staging
+python stress_test/build_stress.py       # macro-credit satellite stress (Approach B)
+python tools/make_figures.py             # regenerate all charts from committed tables
 ```
 
 ## Repository layout
@@ -154,9 +196,10 @@ python tools/make_pd_calibration.py
 .
 ├── data/                 # Home Credit source data (not redistributed)
 ├── notebooks/            # 00–07 PD scorecard · 08 EAD/CCF/EL · 09 stress
-├── outputs/tables/       # committed scorecard + EAD/EL/stress results  ·  outputs/charts/ — PNGs
+├── outputs/tables/       # committed scorecard + EAD/EL/IFRS9/stress results  ·  outputs/charts/ — PNGs
 ├── src/                  # woe, transform, calibration, validation, psi, monitoring, backtesting
-├── tools/                # make_figures.py, make_pd_calibration.py
+├── tools/                # make_figures · make_pd_calibration · make_pd_validation · make_grade_pd_moc_floor · make_el_summary
+├── stress_test/          # macro-credit satellite model (Approach B): macro CSV, build_stress.py, outputs
 ├── consumer_credit_alignment.md   # methodology + regulatory alignment (technical companion)
 └── Scorecard_README.md   # WOE/IV + score-scaling theory
 ```

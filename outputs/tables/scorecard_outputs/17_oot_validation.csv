@@ -1,0 +1,3 @@
+split,train_auc,test_auc,train_avg_predicted_pd,test_avg_predicted_pd,test_observed_default_rate,psi_train_vs_test
+A) random out-of-sample: fit on train -> score held-out test,0.7112,0.7139,0.0888,0.089,0.0807,0.0001
+B) cold holdout (random never-seen 30%; temporal OOT not feasible on snapshot),0.712,0.712,0.0889,0.0891,0.0805,0.0001

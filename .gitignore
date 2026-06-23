@@ -27,3 +27,7 @@ outputs/tables/scorecard_outputs/06_test_scored.csv
 
 # Local working folders
 Concepts/
+
+# Build-spec / instruction docs — working notes, not part of the published repo
+MODEL_BUILD_CHECKLIST.md
+Credit_Risk_Model_Compliance_Consolidated_Reference.md

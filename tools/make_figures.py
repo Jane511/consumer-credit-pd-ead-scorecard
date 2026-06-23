@@ -92,4 +92,45 @@ ax.set_ylabel("default (bad) rate (%)")
 ax.set_title("Score bands drive the lending decision")
 save(fig, "score_band_policy.png")
 
+# 5. Expected Loss by rating grade -------------------------------------------
+el = pd.read_csv(SC / "19_el_summary_by_grade.csv")
+elg = el[el.grade != "PORTFOLIO"].copy()
+fig, ax = plt.subplots(figsize=(7.4, 4.6))
+bars = ax.bar(elg.grade, elg.total_expected_loss / 1e6,
+              color=plt.cm.RdYlGn_r([i / (len(elg) - 1) for i in range(len(elg))]),
+              width=0.74, edgecolor="white")
+for b, bps in zip(bars, elg.el_rate_bps):
+    ax.text(b.get_x() + b.get_width() / 2, b.get_height(), f"{bps:.0f}bps",
+            ha="center", va="bottom", fontsize=9)
+ax.set_xlabel("rating grade (G1 = riskiest → G8 = safest)")
+ax.set_ylabel("expected loss ($m)")
+ax.set_title("Expected Loss by grade (EL = PD × LGD × EAD)")
+save(fig, "el_by_grade.png")
+
+# 6. Satellite stress — base vs stressed PD by grade -------------------------
+ST = ROOT / "stress_test" / "outputs"
+sp = ST / "tables" / "scenario_stressed_pd_by_grade.csv"
+if sp.exists():
+    SFIG = ST / "charts"
+    SFIG.mkdir(parents=True, exist_ok=True)
+    s = pd.read_csv(sp)
+    base = s[s.scenario == "baseline"].set_index("grade")["base_pd"]
+    mild = s[s.scenario == "mild recession"].set_index("grade")["stressed_pd"]
+    sev = s[s.scenario == "severe recession"].set_index("grade")["stressed_pd"]
+    order = list(base.index)
+    x = range(len(order))
+    fig, ax = plt.subplots(figsize=(7.8, 4.8))
+    ax.plot(x, [base[g] * 100 for g in order], "-o", color=GOOD, label="baseline")
+    ax.plot(x, [mild[g] * 100 for g in order], "-o", color="#f4a020", label="mild recession")
+    ax.plot(x, [sev[g] * 100 for g in order], "-o", color=BAD, label="severe recession")
+    ax.set_xticks(list(x)); ax.set_xticklabels(order)
+    ax.set_xlabel("rating grade (G1 = riskiest → G8 = safest)")
+    ax.set_ylabel("PD (%)")
+    ax.set_title("Satellite macro stress: stressed PD by grade")
+    ax.legend(frameon=False)
+    fig.tight_layout()
+    fig.savefig(SFIG / "stressed_pd_by_grade.png")
+    plt.close(fig)
+    print("wrote", SFIG / "stressed_pd_by_grade.png")
+
 print("\nAll figures written to", FIG)

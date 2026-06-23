@@ -1,0 +1,6 @@
+variable,coefficient_std,expected_sign,sign_ok,used_in_stress
+unemployment,0.1091,1,1,1
+wage_growth,-0.123,-1,1,1
+inflation,0.0436,1,1,1
+gdp_growth,-0.1752,-1,1,1
+_R2,0.4543,,,

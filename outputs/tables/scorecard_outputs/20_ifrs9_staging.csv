@@ -1,0 +1,4 @@
+ifrs9_stage,loans,avg_pd,avg_lgd,total_ead,expected_loss_12m,reported_ecl
+1 (performing),77475,0.071699,0.75,155337375.0,8353131.5,8353131.5
+2 (SICR),7331,0.221107,0.75,14698655.0,2437484.5,7312453.5
+3 (credit-impaired),7448,0.132709,0.75,14933240.0,1486330.55,11199930.0

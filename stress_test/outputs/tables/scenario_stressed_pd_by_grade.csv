@@ -1,0 +1,25 @@
+scenario,grade,base_pd,macro_logit_shift,stressed_pd,pd_multiplier,stressed_grade,migrated_beyond_worst
+baseline,G1,0.124041,0.0,0.124041,1.0,G1,False
+baseline,G2,0.117736,0.0,0.117736,1.0,G2,False
+baseline,G3,0.113545,0.0,0.113545,1.0,G3,False
+baseline,G4,0.094419,0.0,0.094419,1.0,G4,False
+baseline,G5,0.106767,0.0,0.106767,1.0,G5,False
+baseline,G6,0.090021,0.0,0.090021,1.0,G6,False
+baseline,G7,0.091732,0.0,0.091732,1.0,G7,False
+baseline,G8,0.075913,0.0,0.075913,1.0,G8,False
+mild recession,G1,0.124041,0.5944,0.204195,1.65,G1,True
+mild recession,G2,0.117736,0.5944,0.194722,1.65,G1,True
+mild recession,G3,0.113545,0.5944,0.188375,1.66,G1,True
+mild recession,G4,0.094419,0.5944,0.158904,1.68,G1,True
+mild recession,G5,0.106767,0.5944,0.178028,1.67,G1,True
+mild recession,G6,0.090021,0.5944,0.152007,1.69,G1,True
+mild recession,G7,0.091732,0.5944,0.154695,1.69,G1,True
+mild recession,G8,0.075913,0.5944,0.129567,1.71,G1,True
+severe recession,G1,0.124041,1.0219,0.282357,2.28,G1,True
+severe recession,G2,0.117736,1.0219,0.27049,2.3,G1,True
+severe recession,G3,0.113545,1.0219,0.262479,2.31,G1,True
+severe recession,G4,0.094419,1.0219,0.224623,2.38,G1,True
+severe recession,G5,0.106767,1.0219,0.249311,2.34,G1,True
+severe recession,G6,0.090021,1.0219,0.215604,2.4,G1,True
+severe recession,G7,0.091732,1.0219,0.219127,2.39,G1,True
+severe recession,G8,0.075913,1.0219,0.185834,2.45,G1,True

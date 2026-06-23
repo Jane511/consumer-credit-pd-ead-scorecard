@@ -1,0 +1,11 @@
+metric,value
+threshold (PD cut-off = portfolio prevalence),0.0885
+true_positives (caught defaults),5058.0
+false_positives (false alarms),32052.0
+true_negatives,52754.0
+false_negatives (missed defaults),2390.0
+recall (sensitivity),0.6791
+precision,0.1363
+specificity,0.6221
+accuracy,0.6267
+f1,0.227

@@ -1,0 +1,4 @@
+method,severe_PD_mult_x,note
+satellite severe (this module),2.36,logit-linear macro model on public consumer-credit history; inputs clipped to support
+observed industry peak (data),3.09,FRED CC charge-off peak (2010) / calm-years avg (2014-19) — the realised ceiling
+notebook-09 multiplier (Method A),2.5,judgemental observed multiplier used in the simple stress test
